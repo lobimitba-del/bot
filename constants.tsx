@@ -5,8 +5,9 @@ export const SIM = ['1', 'sim', 's', 'ss', 'ok', 'quero', 'continuar', 'pode', '
 export const NAO = ['2', 'nao', 'não', 'n', 'nn', 'depois', 'agora não', 'agora nao', 'prefiro não', 'sair', 'cancelar', '👎'];
 
 export const BAILEYS_CODE = `/**
- * CÓDIGO ESTABILIZADO - VERSÃO 2.3 (PROTOCOLO DE RECUPERAÇÃO)
- * ⚠️ IMPORTANTE: Só use este código após o descanso de 2 a 24 horas do número.
+ * CÓDIGO ESTABILIZADO - VERSÃO 2.4 (BUSINESS OPTIMIZED)
+ * ⚠️ PROTOCOLO PARA WHATSAPP BUSINESS
+ * Focado em evitar bloqueios em contas comerciais que sofreram instabilidade.
  */
 
 if (!global.crypto) {
@@ -28,7 +29,6 @@ const {
 const { Boom } = require('@hapi/boom');
 const pino = require('pino');
 
-// Módulo de cache para evitar sobrecarga no banco de dados da sessão
 let msgRetryCounterCache;
 try {
   const NodeCache = require('node-cache');
@@ -45,20 +45,17 @@ function tem(palavra, lista) {
   return lista.some(p => palavra.toLowerCase().includes(p));
 }
 
-// Atraso humano para não parecer automação pesada
-const humanDelay = async (min = 2000, max = 5000) => {
+// Atraso humano BUSINESS (Mais lento e aleatório)
+const humanDelay = async (min = 3000, max = 7000) => {
   const time = Math.floor(Math.random() * (max - min + 1) + min);
   await delay(time);
 };
 
 async function connectToWhatsApp() {
-  console.log('🧹 Limpando buffers antigos...');
-  
-  // O segredo para números marcados é o MultiFileAuthState limpo
   const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
   const { version } = await fetchLatestBaileysVersion();
   
-  console.log('🔄 Iniciando Conexão v2.3 (Recuperação de Reputação)');
+  console.log('🏢 Iniciando Conexão Business v2.4...');
 
   const sock = makeWASocket({
     version,
@@ -69,33 +66,29 @@ async function connectToWhatsApp() {
     },
     msgRetryCounterCache,
     logger: pino({ level: 'silent' }),
-    // Identidade de Navegador estável (Safari no Mac é o mais seguro)
-    browser: ['Mac OS', 'Safari', '10.15.7'],
+    // Identidade de Chrome no Windows (Padrão para Business Web)
+    browser: ['Windows', 'Chrome', '114.0.5735.199'],
     syncFullHistory: false,
-    markOnlineOnConnect: false, // Não entrar como online logo de cara ajuda a evitar flag
-    connectTimeoutMs: 120000,   // Timeout longo para o servidor processar a volta do número
-    keepAliveIntervalMs: 30000,
+    markOnlineOnConnect: true,
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 0,
   });
 
   sock.ev.on('creds.update', saveCreds);
 
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect, qr } = update;
-    
-    if (qr) {
-      console.log('✨ Novo QR Code gerado. Escaneie apenas uma vez!');
-    }
+    if (qr) console.log('💠 QR Code Business pronto. Escaneie pelo App Business.');
 
     if (connection === 'close') {
       const statusCode = (lastDisconnect.error instanceof Boom)?.output?.statusCode;
-      console.log('⚠️ Conexão fechada. Motivo:', statusCode);
-      
-      if (statusCode !== DisconnectReason.loggedOut) {
-        console.log('🔄 Tentando reconexão lenta em 10 segundos...');
+      if (statusCode === 401) {
+        console.log('❌ Sessão expirada. Delete a pasta auth_info_baileys e tente novamente.');
+      } else if (statusCode !== DisconnectReason.loggedOut) {
         setTimeout(() => connectToWhatsApp(), 10000);
       }
     } else if (connection === 'open') {
-      console.log('\\n✅ SUCESSO! Número reconectado e estável.\\n');
+      console.log('\\n✅ BUSINESS CONECTADO! Reputação da conta sendo monitorada...\\n');
     }
   });
 
@@ -108,23 +101,28 @@ async function connectToWhatsApp() {
     const textoNormalizado = text.toLowerCase().trim();
 
     const sendText = async (txt) => {
+      // 1. Simula o tempo de "olhar o celular"
+      await delay(2000);
       await sock.readMessages([msg.key]);
-      await humanDelay(1000, 2000);
+      
+      // 2. Simula o tempo de "começar a digitar"
+      await humanDelay(1000, 3000);
       await sock.sendPresenceUpdate('composing', jid);
-      await humanDelay(3000, 6000);
+      
+      // 3. Simula a digitação real (tempo maior para Business)
+      await humanDelay(4000, 8000);
       await sock.sendMessage(jid, { text: txt });
     };
 
-    // Lógica de atendimento
     if (!estado[jid]) {
       estado[jid] = 'INICIO';
-      await sendText('⚠️ Olá! Bem-vindo ao estudo de José do Egito.\\n\\n1️⃣ Continuar\\n2️⃣ Sair');
+      await sendText('⚠️ Olá! Bem-vindo ao atendimento comercial José do Egito.\\n\\n1️⃣ Continuar\\n2️⃣ Sair');
       return;
     }
 
     if (estado[jid] === 'INICIO' && tem(textoNormalizado, SIM)) {
       estado[jid] = 'PERMISSAO';
-      await sendText('📲 Vou te enviar o link do App de estudos.\\n\\nPosso enviar?\\n1️⃣ Sim\\n2️⃣ Não');
+      await sendText('📲 Entendido. Vou te enviar o link do App de estudos.\\n\\nPosso enviar?\\n1️⃣ Sim\\n2️⃣ Não');
     }
   });
 }
