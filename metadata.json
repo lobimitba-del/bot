@@ -1,0 +1,5 @@
+{
+  "name": "WhatsApp Bot Converter - Baileys",
+  "description": "A dashboard to visualize the conversion of a WhatsApp chatbot from whatsapp-web.js to Baileys, including code output, logic simulation, and installation guides.",
+  "requestFramePermissions": []
+}
